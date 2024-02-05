@@ -83,7 +83,7 @@ jobs:
           command: clippy
           args: -- -D warnings
 
-  release:
+  release-mac:
     runs-on: macos-latest
     needs:
       - test
