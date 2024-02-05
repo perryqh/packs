@@ -111,6 +111,8 @@ jobs:
           cargo clippy --version
       - name: Build
         run: cargo build --release --target aarch64-apple-darwin --target x86_64-apple-darwin --target x86_64-unknown-linux-gnu
+      - name: Build linux
+        run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: Check for version changes in Cargo.toml
         id: check_for_version_changes
         run: |
