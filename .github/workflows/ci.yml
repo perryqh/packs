@@ -176,7 +176,7 @@ jobs:
           rustc --version
           cargo clippy --version
       - name: Build 
-        run: cargo afl build --release --target x86_64-unknown-linux-gnu
+        run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: Check for version changes in Cargo.toml
         id: check_for_version_changes
         run: |
