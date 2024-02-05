@@ -103,7 +103,6 @@ jobs:
           rustup component add clippy
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
-          rustup target add x86_64-unknown-linux-gnu
       - name: Toolchain info
         run: |
           cargo --version --verbose
@@ -111,7 +110,72 @@ jobs:
           cargo clippy --version
       - name: Build
         run: cargo build --release --target aarch64-apple-darwin --target x86_64-apple-darwin 
-      - name: Build linux
+      - name: Check for version changes in Cargo.toml
+        id: check_for_version_changes
+        run: |
+          # When there are no changes, VERSION_CHANGES will be empty
+          # Without the echo, this command would exit with a 1, causing the GitHub Action to fail
+          # Instead, we want it to succeed, but just evaluate `changed=false` in the other branch of the conditional
+          VERSION_CHANGES=$(git diff HEAD~1 HEAD Cargo.toml | grep "\+version" || echo "")
+          if [[ -n $VERSION_CHANGES ]]; then
+            NEW_VERSION=$(echo $VERSION_CHANGES | awk -F'"' '{print $2}')
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: cargo publish and create GitHub Release if current commit has updated the version in Cargo.toml
+        if: steps.check_for_version_changes.outputs.changed == 'true'
+        run: |
+          # This combines the intel and m1 binaries into a single binary
+          lipo -create -output target/packs target/aarch64-apple-darwin/release/packs target/x86_64-apple-darwin/release/packs
+
+          # Creates artifact for homebrew. -C means run from `target` directory
+          tar -czf target/packs-mac.tar.gz -C target packs
+
+          gh release create v${{steps.check_for_version_changes.outputs.new_version}} --target "${{ github.sha }}" --generate-notes
+
+          # This uploads the raw binary
+          gh release upload v${{steps.check_for_version_changes.outputs.new_version}} target/packs
+
+          # This tarball is a binary that is executable
+          gh release upload v${{steps.check_for_version_changes.outputs.new_version}} target/packs-mac.tar.gz
+
+          cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Skip publishing
+        if: steps.check_for_version_changes.outputs.changed == 'false'
+        run: |
+          echo "No diff to the version found in Cargo.toml. Skipping publishing."
+
+  release-linux:
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - lints
+      - check
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # https://stackoverflow.com/questions/65944700/how-to-run-git-diff-in-github-actions
+          # TLDR – By default this action fetches no history.
+          # We need a bit of history to be able to check if we've recently updated the version in Cargo.toml
+          fetch-depth: 2
+      - name: Update local toolchain
+        run: |
+          rustup update
+          rustup component add clippy
+          rustup target add x86_64-unknown-linux-gnu
+      - name: Toolchain info
+        run: |
+          cargo --version --verbose
+          rustc --version
+          cargo clippy --version
+      - name: Build 
         run: cargo afl build --release --target x86_64-unknown-linux-gnu
       - name: Check for version changes in Cargo.toml
         id: check_for_version_changes
@@ -135,19 +199,6 @@ jobs:
           lipo -create -output target/packs-x86-64-unknown-linux-gnu target/x86_64-unknown-linux-gnu
           tar -czf target/x86-64-unknown-linux-gnu.tar.gz -C target packs-x86-64-unknown-linux-gnu
 
-          # This combines the intel and m1 binaries into a single binary
-          lipo -create -output target/packs target/aarch64-apple-darwin/release/packs target/x86_64-apple-darwin/release/packs
-
-          # Creates artifact for homebrew. -C means run from `target` directory
-          tar -czf target/packs-mac.tar.gz -C target packs
-
-          gh release create v${{steps.check_for_version_changes.outputs.new_version}} --target "${{ github.sha }}" --generate-notes
-
-          # This uploads the raw binary
-          gh release upload v${{steps.check_for_version_changes.outputs.new_version}} target/packs
-
-          # This tarball is a binary that is executable
-          gh release upload v${{steps.check_for_version_changes.outputs.new_version}} target/packs-mac.tar.gz
           gh release upload v${{steps.check_for_version_changes.outputs.new_version}} target/x86_64-unknown-linux-gnu.tar.gz
 
           cargo publish
