@@ -88,7 +88,7 @@ impl Configuration {
     }
 }
 
-pub(crate) fn get(absolute_root: &Path) -> anyhow::Result<Configuration> {
+pub fn get(absolute_root: &Path) -> anyhow::Result<Configuration> {
     debug!("Beginning to build configuration");
 
     let raw_config = raw_configuration::get(absolute_root)?;

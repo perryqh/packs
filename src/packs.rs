@@ -4,12 +4,12 @@ pub mod cli;
 
 // Module declarations
 pub(crate) mod caching;
-pub(crate) mod checker;
-pub(crate) mod configuration;
+pub mod checker;
+pub mod configuration;
 pub(crate) mod constant_resolver;
 pub(crate) mod dependencies;
 pub(crate) mod monkey_patch_detection;
-pub(crate) mod pack;
+pub mod pack;
 pub(crate) mod parsing;
 pub(crate) mod raw_configuration;
 pub(crate) mod walk_directory;
