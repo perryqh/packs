@@ -128,7 +128,7 @@ impl CheckerInterface for Checker {
         }
         let defining_pack = defining_pack.unwrap();
 
-        if referencing_pack.enforce_architecture().is_false() {
+        if !configuration.force_enforce_all && referencing_pack.enforce_architecture().is_false() {
             return Ok(None);
         }
 

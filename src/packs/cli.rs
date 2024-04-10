@@ -34,6 +34,10 @@ struct Args {
     /// Print to console when files begin and finish processing (to identify files that panic when processing files concurrently)
     #[arg(short, long)]
     print_files: bool,
+
+    /// Ignore enforce false in package.yml files
+    #[arg(short, long, default_value = "true")]
+    force_enforce_all: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -175,6 +179,11 @@ pub fn run() -> anyhow::Result<()> {
     if args.experimental_parser {
         debug!("Using experimental parser");
         configuration.experimental_parser = true;
+    }
+
+    if args.force_enforce_all {
+        debug!("Ignoring enforce: false in package.yml files");
+        configuration.force_enforce_all = true;
     }
 
     if args.no_cache {

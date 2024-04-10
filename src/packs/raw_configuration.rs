@@ -56,6 +56,10 @@ pub(crate) struct RawConfiguration {
     #[serde(default)]
     pub experimental_parser: bool,
 
+    // Ignore enforce false in package.yml files
+    #[serde(default)]
+    pub force_enforce_all: bool,
+
     // Ignored monkey patches
     #[serde(default)]
     pub ignored_definitions: HashMap<String, HashSet<PathBuf>>,

@@ -27,6 +27,7 @@ pub struct Configuration {
     pub pack_set: PackSet,
     pub layers: Layers,
     pub experimental_parser: bool,
+    pub force_enforce_all: bool,
     pub ignored_definitions: HashMap<String, HashSet<PathBuf>>,
     pub autoload_roots: HashMap<PathBuf, String>,
     pub inflections_path: PathBuf,
@@ -115,6 +116,7 @@ pub(crate) fn from_raw(
     let cache_directory = absolute_root.join(raw_config.cache_directory);
     let cache_enabled = raw_config.cache;
     let experimental_parser = raw_config.experimental_parser;
+    let force_enforce_all = raw_config.force_enforce_all;
 
     let layers = Layers {
         layers: raw_config.architecture_layers,
@@ -152,6 +154,7 @@ pub(crate) fn from_raw(
         pack_set,
         layers,
         experimental_parser,
+        force_enforce_all,
         ignored_definitions,
         autoload_roots,
         inflections_path,

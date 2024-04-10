@@ -22,7 +22,7 @@ impl CheckerInterface for Checker {
         }
         let defining_pack = defining_pack.unwrap();
 
-        if defining_pack.enforce_privacy().is_false() {
+        if !configuration.force_enforce_all  && defining_pack.enforce_privacy().is_false() {
             return Ok(None);
         }
 
