@@ -12,6 +12,7 @@ mod visibility;
 use crate::packs::pack::write_pack_to_disk;
 use crate::packs::pack::Pack;
 use crate::packs::package_todo;
+use crate::packs::reference_extractor::get_all_references_new;
 use crate::packs::Configuration;
 
 use anyhow::bail;
@@ -421,7 +422,7 @@ fn get_all_violations(
     absolute_paths: &HashSet<PathBuf>,
     checkers: &Vec<Box<dyn CheckerInterface + Send + Sync>>,
 ) -> anyhow::Result<HashSet<Violation>> {
-    let references = get_all_references(configuration, absolute_paths)?;
+    let references = get_all_references_new(configuration, absolute_paths)?;
     debug!("Running checkers on resolved references");
 
     let violations = checkers
