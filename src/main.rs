@@ -1,5 +1,6 @@
 use packs::packs::cli;
 
-pub fn main() -> anyhow::Result<()> {
-    cli::run()
+#[tokio::main]
+pub async fn main() -> anyhow::Result<()> {
+    cli::run().await
 }

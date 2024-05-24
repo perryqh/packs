@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::PathBuf, sync::Arc,
 };
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
@@ -183,7 +183,7 @@ fn autoload_paths_from_config(
     autoload_paths
 }
 
-pub(crate) fn get_all_references_new(
+pub(crate) async fn get_all_references_new(
     configuration: &Configuration,
     absolute_paths: &HashSet<PathBuf>,
 ) -> anyhow::Result<Vec<Reference>> {
@@ -192,7 +192,7 @@ pub(crate) fn get_all_references_new(
     // todo: still need the special case roots
     let extra_reference_fields_fn =
         Some(Box::new(pack_names) as Box<dyn ExtraReferenceFieldsFn>);
-    let ref_config = ruby_references::configuration::Configuration {
+    let ref_config = Arc::new(ruby_references::configuration::Configuration {
         absolute_root: configuration.absolute_root.clone(),
         autoload_paths: autoload_paths_from_config(configuration),
         acronyms: rails_utils::get_acronyms_from_disk(
@@ -200,11 +200,12 @@ pub(crate) fn get_all_references_new(
         ),
         included_files: absolute_paths.clone(),
         include_reference_is_definition: false,
+        cache_enabled: true,
         extra_reference_fields_fn,
         ..Default::default()
-    };
+    });
 
-    let refs = ruby_references::reference::all_references(&ref_config)?;
+    let refs = ruby_references::reference::all_references(ref_config).await?;
     let pks_references = refs
         .into_iter()
         .filter_map(|r| {

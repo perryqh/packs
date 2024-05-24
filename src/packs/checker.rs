@@ -244,7 +244,7 @@ impl<'a> CheckAllBuilder<'a> {
     }
 }
 
-pub(crate) fn check_all(
+pub(crate) async fn check_all(
     configuration: &Configuration,
     files: Vec<String>,
 ) -> anyhow::Result<CheckAllResult> {
@@ -255,7 +255,7 @@ pub(crate) fn check_all(
         configuration.intersect_files(files.clone());
 
     let violations: HashSet<Violation> =
-        get_all_violations(configuration, &absolute_paths, &checkers)?;
+        get_all_violations(configuration, &absolute_paths, &checkers).await?;
     let found_violations = FoundViolations {
         absolute_paths,
         violations,
@@ -310,14 +310,14 @@ pub(crate) fn validate_all(
     }
 }
 
-pub(crate) fn update(configuration: &Configuration) -> anyhow::Result<()> {
+pub(crate) async fn update(configuration: &Configuration) -> anyhow::Result<()> {
     let checkers = get_checkers(configuration);
 
     let violations = get_all_violations(
         configuration,
         &configuration.included_files,
         &checkers,
-    )?;
+    ).await?;
 
     let strict_violations = &violations
         .iter()
@@ -417,12 +417,12 @@ fn get_unnecessary_dependencies(
     Ok(unnecessary_dependencies)
 }
 
-fn get_all_violations(
+async fn get_all_violations(
     configuration: &Configuration,
     absolute_paths: &HashSet<PathBuf>,
     checkers: &Vec<Box<dyn CheckerInterface + Send + Sync>>,
 ) -> anyhow::Result<HashSet<Violation>> {
-    let references = get_all_references_new(configuration, absolute_paths)?;
+    let references = get_all_references_new(configuration, absolute_paths).await?;
     debug!("Running checkers on resolved references");
 
     let violations = checkers
