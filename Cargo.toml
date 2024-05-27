@@ -34,7 +34,7 @@ clap_derive = "4.2.0" # cli
 itertools = "0.13.0" # tools for iterating over iterable things
 jwalk = "0.8.1" # for walking the file tree
 path-clean = "1.0.1" # Pathname#cleaname in Ruby
-rayon = "1.7.0" # for parallel iteration
+rayon = "1.10.0" # for parallel iteration
 regex = "1.7.3"
 serde = { version = "~1", features = ["derive"] } # de(serialization)
 serde_yaml = "0.9.19" # de(serialization)
@@ -50,8 +50,7 @@ line-col = "0.2.1" # for creating source maps of violations
 ruby_inflector = '0.0.8' # for inflecting strings, e.g. turning `has_many :companies` into `Company`
 petgraph = "0.6.3" # for running graph algorithms (e.g. does the dependency graph contain a cycle?)
 fnmatch-regex2 = "0.3.0"
-ruby-references = { path = "../rubyatscale/ruby-references" } # for parsing ruby files
-tokio = { version = "1.37.0", features = ["full"] } # async
+ruby-references = { path = "../ruby-references" } # for parsing ruby files
 
 [dev-dependencies]
 assert_cmd = "2.0.10" # testing CLI

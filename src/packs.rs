@@ -92,12 +92,12 @@ See https://github.com/rubyatscale/packs#readme for more info!",
     Ok(())
 }
 
-pub async fn check(
+pub fn check(
     configuration: &Configuration,
     files: Vec<String>,
 ) -> anyhow::Result<()> {
     let result = checker::check_all(configuration, files)
-        .await.context("Failed to check files")?;
+        .context("Failed to check files")?;
     println!("{}", result);
     if result.has_violations() {
         bail!("Violations found!")
@@ -105,8 +105,8 @@ pub async fn check(
     Ok(())
 }
 
-pub async fn update(configuration: &Configuration) -> anyhow::Result<()> {
-    checker::update(configuration).await
+pub fn update(configuration: &Configuration) -> anyhow::Result<()> {
+    checker::update(configuration)
 }
 
 pub fn add_dependency(

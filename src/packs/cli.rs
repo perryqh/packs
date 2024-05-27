@@ -158,7 +158,7 @@ impl Args {
     }
 }
 
-pub async fn run() -> anyhow::Result<()> {
+pub fn run() -> anyhow::Result<()> {
     let args = Args::parse();
     let absolute_root = args
         .absolute_project_root()
@@ -204,7 +204,7 @@ pub async fn run() -> anyhow::Result<()> {
         } => {
             configuration.ignore_recorded_violations =
                 ignore_recorded_violations;
-            packs::check(&configuration, files).await
+            packs::check(&configuration, files)
         }
         Command::CheckContents {
             ignore_recorded_violations,
@@ -215,9 +215,9 @@ pub async fn run() -> anyhow::Result<()> {
 
             let absolute_path = get_absolute_path(file.clone(), &configuration);
             configuration.stdin_file_path = Some(absolute_path);
-            packs::check(&configuration, vec![file]).await
+            packs::check(&configuration, vec![file])
         }
-        Command::Update => packs::update(&configuration).await,
+        Command::Update => packs::update(&configuration),
         Command::Validate => {
             packs::validate(&configuration)
             // Err("💡 Please use `packs check` to detect dependency cycles and run other configuration validations".into())
