@@ -109,28 +109,26 @@ impl PackageNames {
         }
     }
 
-    pub fn find_pack_name(&self, file_path: &str) -> Option<String> {
-        self.owning_pack_name_for_file
-            .get(&PathBuf::from(file_path))
-            .cloned()
+    pub fn find_pack_name(&self, file_path: &PathBuf) -> Option<String> {
+        self.owning_pack_name_for_file.get(file_path).cloned()
     }
 }
 
 impl ExtraReferenceFieldsFn for PackageNames {
     fn extra_reference_fields_fn(
         &self,
-        relative_referencing_file: &str,
-        relative_defining_file: Option<&str>,
+        referencing_file_path: &PathBuf,
+        defining_file_path: Option<&PathBuf>,
     ) -> HashMap<String, String> {
         let mut extra_fields = HashMap::new();
         if let Some(referencing_pack) =
-            self.find_pack_name(relative_referencing_file)
+            self.find_pack_name(referencing_file_path)
         {
             extra_fields
                 .insert("referencing_pack_name".to_string(), referencing_pack);
         }
-        if let Some(defining_file) = relative_defining_file {
-            if let Some(defining_pack) = self.find_pack_name(defining_file) {
+        if let Some(file_path) = defining_file_path {
+            if let Some(defining_pack) = self.find_pack_name(file_path) {
                 extra_fields
                     .insert("defining_pack_name".to_string(), defining_pack);
             }
