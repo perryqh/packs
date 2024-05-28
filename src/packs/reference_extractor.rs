@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+use rayon::{iter::IntoParallelIterator, prelude::{IntoParallelRefIterator, ParallelIterator}};
 use ruby_references::configuration::ExtraReferenceFieldsFn;
 use tracing::debug;
 
@@ -207,7 +207,7 @@ pub(crate) fn get_all_references_new(
 
     let refs = ruby_references::reference::all_references(&ref_config)?;
     let pks_references = refs
-        .into_iter()
+        .into_par_iter()
         .filter_map(|r| {
             if r.extra_fields.get("referencing_pack_name").is_none() {
                 None
