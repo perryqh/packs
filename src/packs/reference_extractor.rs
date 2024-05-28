@@ -3,7 +3,10 @@ use std::{
     path::PathBuf,
 };
 
-use rayon::{iter::IntoParallelIterator, prelude::{IntoParallelRefIterator, ParallelIterator}};
+use rayon::{
+    iter::IntoParallelIterator,
+    prelude::{IntoParallelRefIterator, ParallelIterator},
+};
 use ruby_references::configuration::ExtraReferenceFieldsFn;
 use tracing::debug;
 
@@ -96,38 +99,20 @@ pub(crate) fn get_all_references(
 }
 
 struct PackageNames {
-    names: Vec<String>,
+    owning_pack_name_for_file: HashMap<PathBuf, String>,
 }
 
 impl PackageNames {
-    fn new(config: &Configuration) -> Self {
-        let mut names: Vec<String> = config
-            .pack_set
-            .packs
-            .iter()
-            .map(|pack| pack.name.clone())
-            .collect::<Vec<String>>()
-            .into();
-        names.sort();
-        PackageNames { names }
-    }
-    // TODO: build up hash of dir -> pack as we go
-    pub fn find_pack_name(&self, file_path: &str) -> Option<String> {
-        let mut pack_name = ".";
-        let mut containing = false;
-        for pn in self.names.iter() {
-            if file_path.contains(pn) {
-                if pn.len() > pack_name.len() {
-                    pack_name = pn;
-                    containing = true;
-                }
-            } else {
-                if containing {
-                    break;
-                }
-            }
+    fn new(owning_pack_name_for_file: HashMap<PathBuf, String>) -> Self {
+        PackageNames {
+            owning_pack_name_for_file,
         }
-        Some(pack_name.to_string())
+    }
+
+    pub fn find_pack_name(&self, file_path: &str) -> Option<String> {
+        self.owning_pack_name_for_file
+            .get(&PathBuf::from(file_path))
+            .cloned()
     }
 }
 
@@ -187,9 +172,10 @@ pub(crate) fn get_all_references_new(
     configuration: &Configuration,
     absolute_paths: &HashSet<PathBuf>,
 ) -> anyhow::Result<Vec<Reference>> {
-    let pack_names = PackageNames::new(configuration);
+    let pack_names = PackageNames::new(
+        configuration.pack_set.owning_pack_name_for_file.clone(),
+    );
 
-    // todo: still need the special case roots
     let extra_reference_fields_fn =
         Some(Box::new(pack_names) as Box<dyn ExtraReferenceFieldsFn>);
     let ref_config = ruby_references::configuration::Configuration {
