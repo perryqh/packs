@@ -28,8 +28,6 @@ use std::fmt::Formatter;
 use std::{collections::HashSet, path::PathBuf};
 use tracing::debug;
 
-use super::reference_extractor::get_all_references;
-
 #[derive(PartialEq, Clone, Eq, Hash, Debug)]
 pub struct ViolationIdentifier {
     pub violation_type: String,
@@ -384,7 +382,7 @@ fn get_unnecessary_dependencies(
     configuration: &Configuration,
 ) -> anyhow::Result<HashMap<Pack, Vec<String>>> {
     let references =
-        get_all_references(configuration, &configuration.included_files)?;
+        get_all_references_new(configuration, &configuration.included_files)?;
     let mut edge_counts: HashMap<(String, String), i32> = HashMap::new();
     for reference in references {
         let defining_pack_name = reference.defining_pack_name;
