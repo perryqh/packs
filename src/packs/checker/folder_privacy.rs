@@ -48,6 +48,7 @@ impl CheckerInterface for Checker {
                 constant_name: reference.constant_name.clone(),
                 referencing_pack_name: referencing_pack.name.clone(),
                 defining_pack_name: defining_pack.name.clone(),
+                count: 1,
             };
             Ok(Some(Violation {
                 message,

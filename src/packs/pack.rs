@@ -184,6 +184,7 @@ impl Pack {
                             constant_name: constant_name.clone(),
                             referencing_pack_name: self.name.clone(),
                             defining_pack_name: defining_pack_name.clone(),
+                            count: 1,
                         };
 
                         violations.push(identifier);
@@ -758,6 +759,7 @@ enforcement_globs_ignore:
                 constant_name: "::Bar".to_string(),
                 referencing_pack_name: "packs/foo".to_string(),
                 defining_pack_name: "packs/bar".to_string(),
+                count: 1,
             },
             ViolationIdentifier {
                 violation_type: "dependency".to_string(),
@@ -766,6 +768,7 @@ enforcement_globs_ignore:
                 constant_name: "::Bar".to_string(),
                 referencing_pack_name: "packs/foo".to_string(),
                 defining_pack_name: "packs/bar".to_string(),
+                count: 1,
             },
         ];
 

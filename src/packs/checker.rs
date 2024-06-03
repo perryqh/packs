@@ -35,10 +35,12 @@ pub struct ViolationIdentifier {
     pub violation_type: String,
     pub strict: bool,
     pub file: String,
+    pub count: usize, // number of violations of this type in `file`
     pub constant_name: String,
     pub referencing_pack_name: String,
     pub defining_pack_name: String,
 }
+
 #[derive(PartialEq, Clone, Eq, Hash, Debug)]
 pub struct Violation {
     message: String,
@@ -494,6 +496,7 @@ mod tests {
                         constant_name: "::Foo::PrivateClass".to_string(),
                         referencing_pack_name: "bar".to_string(),
                         defining_pack_name: "foo".to_string(),
+                        count: 1,
                     }
                 },
                 Violation {
@@ -505,6 +508,7 @@ mod tests {
                         constant_name: "::Foo::AnotherClass".to_string(),
                         referencing_pack_name: "foo".to_string(),
                         defining_pack_name: "bar".to_string(),
+                        count: 1,
                     }
                 }
             ].iter().cloned().collect(),

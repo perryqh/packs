@@ -53,6 +53,7 @@ pub mod tests {
                 constant_name,
                 referencing_pack_name: String::from("packs/foo"),
                 defining_pack_name: String::from("packs/bar"),
+                count: 1,
             },
         }
     }
