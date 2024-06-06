@@ -15,6 +15,7 @@ use crate::packs::pack::write_pack_to_disk;
 use crate::packs::pack::Pack;
 use crate::packs::package_todo;
 use crate::packs::Configuration;
+use crate::packs::SourceLocation;
 
 use anyhow::bail;
 // External imports
@@ -419,32 +420,41 @@ fn get_unnecessary_dependencies(
     Ok(unnecessary_dependencies)
 }
 
+pub fn get_all_violations_by_location(
+    configuration: &Configuration,
+    absolute_paths: &HashSet<PathBuf>,
+    checkers: &Vec<Box<dyn CheckerInterface + Send + Sync>>,
+) -> anyhow::Result<Vec<(Violation, SourceLocation)>> {
+    let references = get_all_references(configuration, absolute_paths)?;
+    checkers
+        .into_par_iter()
+        .try_fold(Vec::new, |mut acc, c| {
+            for reference in &references {
+                if let Some(violation) = c.check(reference, configuration)? {
+                    acc.push((violation, reference.source_location.clone()));
+                }
+            }
+            Ok(acc)
+        })
+        .try_reduce(Vec::new, |mut acc, v| {
+            acc.extend(v);
+            Ok(acc)
+        })
+}
+
 fn get_all_violations(
     configuration: &Configuration,
     absolute_paths: &HashSet<PathBuf>,
     checkers: &Vec<Box<dyn CheckerInterface + Send + Sync>>,
 ) -> anyhow::Result<HashSet<Violation>> {
-    let references = get_all_references(configuration, absolute_paths)?;
-    debug!("Running checkers on resolved references");
-
-    let violations = checkers
-        .into_par_iter()
-        .try_fold(HashSet::new, |mut acc, c| {
-            for reference in &references {
-                if let Some(violation) = c.check(reference, configuration)? {
-                    acc.insert(violation);
-                }
-            }
-            Ok(acc)
-        })
-        .try_reduce(HashSet::new, |mut acc, v| {
-            acc.extend(v);
-            Ok(acc)
-        });
-
-    debug!("Finished running checkers");
-
-    violations
+    get_all_violations_by_location(configuration, absolute_paths, checkers).map(
+        |location_violations| {
+            location_violations
+                .into_iter()
+                .map(|(violation, _)| violation)
+                .collect()
+        },
+    )
 }
 
 fn get_checkers(
