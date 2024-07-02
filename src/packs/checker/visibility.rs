@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use super::{CheckerInterface, ViolationIdentifier};
+use super::output_helper::print_reference_location;
+use super::pack_checker::PackChecker;
+use super::CheckerInterface;
 use crate::packs::checker::Reference;
 use crate::packs::{Configuration, Violation};
 
@@ -15,72 +17,34 @@ impl CheckerInterface for Checker {
         reference: &Reference,
         configuration: &Configuration,
     ) -> anyhow::Result<Option<Violation>> {
-        let referencing_pack =
-            &reference.referencing_pack(&configuration.pack_set)?;
-        let relative_defining_file = &reference.relative_defining_file;
-
-        let referencing_pack_name = &referencing_pack.name;
-        let defining_pack =
-            &reference.defining_pack(&configuration.pack_set)?;
-        if defining_pack.is_none() {
+        let pack_checker =
+            PackChecker::new(configuration, reference, &self.violation_type())?;
+        if !pack_checker.checkable()? {
             return Ok(None);
         }
-        let defining_pack = defining_pack.unwrap();
-
-        if defining_pack.enforce_visibility().is_false() {
-            return Ok(None);
-        }
-
+        let defining_pack = pack_checker.defining_pack.unwrap();
         if defining_pack
             .visible_to
             .as_ref()
             .unwrap_or(&HashSet::new())
-            .contains(referencing_pack_name)
+            .contains(&pack_checker.referencing_pack.name)
         {
             return Ok(None);
         }
 
-        let defining_pack_name = &defining_pack.name;
-
-        if relative_defining_file.is_none() {
-            return Ok(None);
-        }
-
-        if referencing_pack_name == defining_pack_name {
-            return Ok(None);
-        }
-
-        if defining_pack.is_ignored(
-            &reference.relative_referencing_file,
-            &self.violation_type(),
-        )? {
-            return Ok(None);
-        }
+        let loc = print_reference_location(reference);
 
         let message = format!(
-            "{}:{}:{}\nVisibility violation: `{}` belongs to `{}`, which is not visible to `{}`",
-            reference.relative_referencing_file,
-            reference.source_location.line,
-            reference.source_location.column,
+            "{}Visibility violation: `{}` belongs to `{}`, which is not visible to `{}`",
+            loc,
             reference.constant_name,
-            defining_pack_name,
-            referencing_pack_name,
+            defining_pack.name,
+            pack_checker.referencing_pack.name,
         );
-
-        let violation_type = String::from("visibility");
-        let file = reference.relative_referencing_file.clone();
-        let identifier = ViolationIdentifier {
-            violation_type,
-            strict: defining_pack.enforce_visibility().is_strict(),
-            file,
-            constant_name: reference.constant_name.clone(),
-            referencing_pack_name: referencing_pack_name.clone(),
-            defining_pack_name: defining_pack_name.clone(),
-        };
 
         Ok(Some(Violation {
             message,
-            identifier,
+            identifier: pack_checker.violation_identifier(),
         }))
     }
 
@@ -145,7 +109,6 @@ mod tests {
             expected_violation: Some(build_expected_violation(
                 "packs/foo/app/services/foo.rb:3:1\nVisibility violation: `::Bar` belongs to `packs/bar`, which is not visible to `packs/foo`".to_string(),
                 "visibility".to_string(), false)),
-            ..Default::default()
         };
         test_check(&Checker {}, &mut test_checker)
     }
@@ -168,6 +131,7 @@ mod tests {
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
+                    reason: "foo is deprecated".to_string(),
                 }]),
                 ..default_defining_pack()
             }),
@@ -197,7 +161,6 @@ mod tests {
             expected_violation: Some(build_expected_violation(
                 "packs/foo/app/services/foo.rb:3:1\nVisibility violation: `::Bar` belongs to `packs/bar`, which is not visible to `packs/foo`".to_string(),
                 "visibility".to_string(), true)),
-            ..Default::default()
         };
         test_check(&Checker {}, &mut test_checker)
     }

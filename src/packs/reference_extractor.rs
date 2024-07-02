@@ -8,7 +8,7 @@ use rayon::{
     iter::IntoParallelIterator,
     prelude::{IntoParallelRefIterator, ParallelIterator},
 };
-use ruby_references::configuration::ExtraReferenceFieldsFn;
+use ruby_references::references::configuration::ExtraReferenceFieldsFn;
 use tracing::debug;
 
 use crate::packs::{
@@ -177,20 +177,22 @@ pub(crate) fn get_all_references_new(
 
     let extra_reference_fields_fn =
         Some(Box::new(pack_names) as Box<dyn ExtraReferenceFieldsFn>);
-    let ref_config = ruby_references::configuration::Configuration {
-        absolute_root: configuration.absolute_root.clone(),
-        autoload_paths: autoload_paths_from_config(configuration),
-        acronyms: rails_utils::get_acronyms_from_disk(
-            &configuration.inflections_path,
-        ),
-        included_files: absolute_paths.clone(),
-        include_reference_is_definition: false,
-        cache_enabled: true,
-        extra_reference_fields_fn,
-        ..Default::default()
-    };
+    let ref_config =
+        ruby_references::references::configuration::Configuration {
+            absolute_root: configuration.absolute_root.clone(),
+            autoload_paths: autoload_paths_from_config(configuration),
+            acronyms: rails_utils::get_acronyms_from_disk(
+                &configuration.inflections_path,
+            ),
+            included_files: absolute_paths.clone(),
+            include_reference_is_definition: false,
+            cache_enabled: true,
+            extra_reference_fields_fn,
+            ..Default::default()
+        };
 
-    let refs = ruby_references::reference::all_references(&ref_config)?;
+    let refs =
+        ruby_references::references::reference::all_references(&ref_config)?;
     let pks_references = refs
         .into_par_iter()
         .filter_map(|r| {

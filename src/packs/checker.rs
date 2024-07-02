@@ -3,7 +3,9 @@ mod dependency;
 pub(crate) mod layer;
 
 mod common_test;
-mod folder_visibility;
+mod folder_privacy;
+mod output_helper;
+pub(crate) mod pack_checker;
 mod privacy;
 pub(crate) mod reference;
 mod visibility;
@@ -28,6 +30,7 @@ use std::fmt::Formatter;
 use std::{collections::HashSet, path::PathBuf};
 use tracing::debug;
 
+use super::bin_locater;
 #[derive(PartialEq, Clone, Eq, Hash, Debug)]
 pub struct ViolationIdentifier {
     pub violation_type: String,
@@ -73,20 +76,22 @@ impl CheckAllResult {
 
     fn write_violations(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if !self.reportable_violations.is_empty() {
-            writeln!(
-                f,
-                "{} violation(s) detected:",
-                self.reportable_violations.len()
-            )?;
-            for violation in self.reportable_violations.iter() {
-                writeln!(f, "{}", violation.message)?;
+            let mut sorted_violations: Vec<&Violation> =
+                self.reportable_violations.iter().collect();
+            sorted_violations.sort_by(|a, b| a.message.cmp(&b.message));
+
+            writeln!(f, "{} violation(s) detected:", sorted_violations.len())?;
+
+            for violation in sorted_violations {
+                writeln!(f, "{}\n", violation.message)?;
             }
         }
 
         if !self.stale_violations.is_empty() {
             writeln!(
                 f,
-                "There were stale violations found, please run `packs update`"
+                "There were stale violations found, please run `{} update`",
+                bin_locater::packs_bin_name(),
             )?;
         }
 
@@ -453,7 +458,7 @@ fn get_checkers(
         Box::new(layer::Checker {
             layers: configuration.layers.clone(),
         }),
-        Box::new(folder_visibility::Checker {}),
+        Box::new(folder_privacy::Checker {}),
     ]
 }
 
@@ -471,4 +476,55 @@ fn remove_reference_to_dependency(
     };
     write_pack_to_disk(&updated_pack)?;
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use crate::packs::checker::{
+        CheckAllResult, Violation, ViolationIdentifier,
+    };
+
+    #[test]
+    fn test_write_violations() {
+        let chec_result = CheckAllResult {
+            reportable_violations: vec![
+                Violation {
+                    message: "foo/bar/file1.rb:10:5\nPrivacy violation: `::Foo::PrivateClass` is private to `foo`, but referenced from `bar`".to_string(),
+                    identifier: ViolationIdentifier {
+                        violation_type: "Privacy".to_string(),
+                        strict: false,
+                        file: "foo/bar/file1.rb".to_string(),
+                        constant_name: "::Foo::PrivateClass".to_string(),
+                        referencing_pack_name: "bar".to_string(),
+                        defining_pack_name: "foo".to_string(),
+                    }
+                },
+                Violation {
+                    message: "foo/bar/file2.rb:15:3\nDependency violation: `::Foo::AnotherClass` is not allowed to depend on `::Bar::SomeClass`".to_string(),
+                    identifier: ViolationIdentifier {
+                        violation_type: "Dependency".to_string(),
+                        strict: false,
+                        file: "foo/bar/file2.rb".to_string(),
+                        constant_name: "::Foo::AnotherClass".to_string(),
+                        referencing_pack_name: "foo".to_string(),
+                        defining_pack_name: "bar".to_string(),
+                    }
+                }
+            ].iter().cloned().collect(),
+            stale_violations: Vec::new(),
+            strict_mode_violations: Vec::new(),
+        };
+
+        let expected_output = "2 violation(s) detected:
+foo/bar/file1.rb:10:5
+Privacy violation: `::Foo::PrivateClass` is private to `foo`, but referenced from `bar`
+
+foo/bar/file2.rb:15:3
+Dependency violation: `::Foo::AnotherClass` is not allowed to depend on `::Bar::SomeClass`
+
+";
+
+        let actual = format!("{}", chec_result);
+
+        assert_eq!(actual, expected_output);
+    }
 }

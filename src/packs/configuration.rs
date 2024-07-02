@@ -38,6 +38,11 @@ pub struct Configuration {
     pub print_files: bool,
     pub packs_first_mode: bool,
     pub ignore_recorded_violations: bool,
+    pub disable_enforce_dependencies: bool,
+    pub disable_enforce_folder_privacy: bool,
+    pub disable_enforce_layers: bool,
+    pub disable_enforce_privacy: bool,
+    pub disable_enforce_visibility: bool,
 }
 
 impl Configuration {
@@ -116,16 +121,8 @@ pub(crate) fn from_raw(
     let cache_enabled = raw_config.cache;
     let experimental_parser = raw_config.experimental_parser;
 
-    let layers = if raw_config.architecture_layers.is_empty() {
-        Layers {
-            layers: raw_config.layers,
-            using_deprecated_keys: false,
-        }
-    } else {
-        Layers {
-            layers: raw_config.architecture_layers,
-            using_deprecated_keys: true,
-        }
+    let layers = Layers {
+        layers: raw_config.layers,
     };
 
     let ignored_definitions = raw_config.ignored_definitions;
@@ -148,10 +145,6 @@ pub(crate) fn from_raw(
 
     debug!("Finished building configuration");
 
-    let stdin_file_path: Option<PathBuf> = None;
-    let print_files = false;
-    let ignore_recorded_violations = false;
-
     Ok(Configuration {
         included_files,
         absolute_root,
@@ -164,10 +157,15 @@ pub(crate) fn from_raw(
         autoload_roots,
         inflections_path,
         custom_associations,
-        stdin_file_path,
-        print_files,
+        stdin_file_path: None,
+        print_files: false,
         packs_first_mode,
-        ignore_recorded_violations,
+        ignore_recorded_violations: false,
+        disable_enforce_dependencies: false,
+        disable_enforce_folder_privacy: false,
+        disable_enforce_layers: false,
+        disable_enforce_privacy: false,
+        disable_enforce_visibility: false,
     })
 }
 
@@ -209,8 +207,8 @@ mod tests {
                 enforce_dependencies: None,
                 enforce_privacy: Some(CheckerSetting::True),
                 enforce_visibility: None,
+                enforce_folder_privacy: None,
                 enforce_folder_visibility: None,
-                enforce_architecture: None,
                 enforce_layers: None,
                 owner: None,
                 yml: absolute_root.join("packs/bar/package.yml"),
@@ -231,8 +229,8 @@ mod tests {
                 enforce_dependencies: None,
                 enforce_privacy: None,
                 enforce_visibility: None,
+                enforce_folder_privacy: None,
                 enforce_folder_visibility: None,
-                enforce_architecture: None,
                 enforce_layers: None,
                 owner: None,
                 yml: absolute_root.join("packs/baz/package.yml"),
@@ -253,8 +251,8 @@ mod tests {
                 enforce_dependencies: Some(CheckerSetting::True),
                 enforce_privacy: Some(CheckerSetting::True),
                 enforce_visibility: None,
+                enforce_folder_privacy: None,
                 enforce_folder_visibility: None,
-                enforce_architecture: None,
                 enforce_layers: None,
                 owner: None,
                 yml: absolute_root.join("packs/foo/package.yml"),
@@ -277,8 +275,8 @@ mod tests {
                 enforce_dependencies: None,
                 enforce_privacy: None,
                 enforce_visibility: None,
+                enforce_folder_privacy: None,
                 enforce_folder_visibility: None,
-                enforce_architecture: None,
                 enforce_layers: None,
                 owner: None,
                 yml: absolute_root.join("package.yml"),
