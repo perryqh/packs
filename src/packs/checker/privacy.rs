@@ -1,4 +1,6 @@
-use super::{CheckerInterface, ViolationIdentifier};
+use super::output_helper::print_reference_location;
+use super::pack_checker::PackChecker;
+use super::CheckerInterface;
 use crate::packs::checker::Reference;
 use crate::packs::{Configuration, Violation};
 
@@ -10,22 +12,12 @@ impl CheckerInterface for Checker {
         reference: &Reference,
         configuration: &Configuration,
     ) -> anyhow::Result<Option<Violation>> {
-        let referencing_pack =
-            &reference.referencing_pack(&configuration.pack_set)?;
-        let relative_defining_file = &reference.relative_defining_file;
-
-        let referencing_pack_name = &referencing_pack.name;
-        let defining_pack =
-            &reference.defining_pack(&configuration.pack_set)?;
-        if defining_pack.is_none() {
+        let pack_checker =
+            PackChecker::new(configuration, reference, &self.violation_type())?;
+        if !pack_checker.checkable()? {
             return Ok(None);
         }
-        let defining_pack = defining_pack.unwrap();
-
-        if defining_pack.enforce_privacy().is_false() {
-            return Ok(None);
-        }
-
+        let defining_pack = pack_checker.defining_pack.unwrap();
         if defining_pack
             .ignored_private_constants
             .contains(&reference.constant_name)
@@ -33,21 +25,12 @@ impl CheckerInterface for Checker {
             return Ok(None);
         }
 
-        let defining_pack_name = &defining_pack.name;
-
-        if relative_defining_file.is_none() {
-            return Ok(None);
-        }
-
-        if referencing_pack_name == defining_pack_name {
-            return Ok(None);
-        }
-
         // This is a hack for now – we need to read package.yml file public_paths at some point,
         // and probably find a better way to check if the constant is public
 
         let public_folder = &defining_pack.public_folder();
-        let is_public = relative_defining_file
+        let is_public = reference
+            .relative_defining_file
             .as_ref()
             .unwrap()
             .starts_with(public_folder.to_string_lossy().as_ref());
@@ -79,13 +62,6 @@ impl CheckerInterface for Checker {
             }
         }
 
-        if defining_pack.is_ignored(
-            &reference.relative_referencing_file,
-            &self.violation_type(),
-        )? {
-            return Ok(None);
-        }
-
         // START: Original packwerk message
         // path/to/file.rb:36:0
         // Privacy violation: '::Constant' is private to 'packs/defining_pack' but referenced from 'packs/referencing_pack'.
@@ -94,31 +70,19 @@ impl CheckerInterface for Checker {
         // Inference details: this is a reference to ::Constant which seems to be defined in packs/defining_pack/path/to/definition.rb.
         // To receive help interpreting or resolving this error message, see: https://github.com/Shopify/packwerk/blob/main/TROUBLESHOOT.md#Troubleshooting-violations
         // END: Original packwerk message
+        let loc = print_reference_location(reference);
 
         let message = format!(
-            "{}:{}:{}\nPrivacy violation: `{}` is private to `{}`, but referenced from `{}`",
-            reference.relative_referencing_file,
-            reference.source_location.line,
-            reference.source_location.column,
+            "{}Privacy violation: `{}` is private to `{}`, but referenced from `{}`",
+            loc,
             reference.constant_name,
-            defining_pack_name,
-            referencing_pack_name,
+            defining_pack.name,
+            &pack_checker.referencing_pack.name,
         );
-
-        let violation_type = self.violation_type();
-        let file = reference.relative_referencing_file.clone();
-        let identifier = ViolationIdentifier {
-            violation_type,
-            strict: defining_pack.enforce_privacy().is_strict(),
-            file,
-            constant_name: reference.constant_name.clone(),
-            referencing_pack_name: referencing_pack_name.clone(),
-            defining_pack_name: defining_pack_name.clone(),
-        };
 
         Ok(Some(Violation {
             message,
-            identifier,
+            identifier: pack_checker.violation_identifier(),
         }))
     }
 
@@ -203,7 +167,6 @@ mod tests {
                 String::from("packs/foo/app/services/foo.rb:3:1\nPrivacy violation: `::Bar` is private to `packs/bar`, but referenced from `packs/foo`"),
                 String::from("privacy"), false,
             )),
-            ..Default::default()
         };
         test_check(&Checker {}, &mut test_checker)
     }
@@ -225,7 +188,6 @@ mod tests {
                 String::from("packs/foo/app/services/foo.rb:3:1\nPrivacy violation: `::Bar` is private to `packs/bar`, but referenced from `packs/foo`"),
                 String::from("privacy"), true,
             )),
-            ..Default::default()
         };
         test_check(&Checker {}, &mut test_checker)
     }
@@ -271,6 +233,7 @@ mod tests {
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
+                    reason: "deprecated".to_string(),
                 }]),
                 ..default_defining_pack()
             }),
